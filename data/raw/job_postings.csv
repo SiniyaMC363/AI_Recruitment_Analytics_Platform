@@ -1,0 +1,4 @@
+job_id,title,department,description,posted_date
+1,Data Scientist,Analytics,"Seeking a data scientist proficient in Python, SQL, and machine learning to build recruitment analytics models.",2024-01-10
+2,ML Engineer,Engineering,"Looking for an ML engineer with NLP and deep learning experience to improve candidate matching.",2024-01-12
+3,Backend Developer,Engineering,"Hiring a backend developer with Java and cloud experience for our hiring platform.",2024-01-14

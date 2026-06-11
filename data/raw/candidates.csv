@@ -1,0 +1,4 @@
+candidate_id,name,email,resume_text,applied_date
+1,Alice Johnson,alice@email.com,"Senior data scientist with 5 years of experience in Python, machine learning, and NLP. Built predictive models for hiring analytics.",2024-01-15
+2,Bob Smith,bob@email.com,"Software engineer skilled in Java, Spring Boot, and cloud deployment on AWS. Led backend teams for 3 years.",2024-01-18
+3,Carol Lee,carol@email.com,"ML engineer specializing in deep learning, TensorFlow, and computer vision. Published research on resume parsing.",2024-02-01
