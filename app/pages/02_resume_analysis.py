@@ -173,3 +173,44 @@ else:
 
 with st.expander("View full predefined skills database"):
     st.write(", ".join(PREDEFINED_SKILLS))
+
+# --- Optional bridge to Phase 3 Candidate Ranking ---
+st.divider()
+st.subheader("Send to Candidate Ranking")
+
+ranking_col1, ranking_col2 = st.columns([1, 1])
+with ranking_col1:
+    candidate_name = st.text_input(
+        "Candidate name for ranking",
+        value="John Doe",
+        key="ranking_candidate_name",
+    )
+with ranking_col2:
+    experience_years = st.number_input(
+        "Estimated years of experience",
+        min_value=0.0,
+        max_value=40.0,
+        value=3.0,
+        step=0.5,
+        key="ranking_experience_years",
+    )
+
+education_level = st.selectbox(
+    "Education level",
+    options=["PhD", "Master", "Bachelor", "Associate", "High School", "Other"],
+    index=2,
+    key="ranking_education_level",
+)
+
+if st.button("Send to Candidate Ranking", type="primary"):
+    st.session_state["ranking_candidate_data"] = {
+        "candidate_name": candidate_name,
+        "skill_match_percentage": match_result.match_percentage,
+        "matched_skills_count": len(match_result.matched_skills),
+        "skills_count": match_result.skill_count,
+        "matched_skills": match_result.matched_skills,
+        "extracted_skills": extracted_skills,
+        "experience_years": experience_years,
+        "education_level": education_level,
+    }
+    st.success("Candidate data saved. Open the Candidate Ranking page to run ML prediction.")
