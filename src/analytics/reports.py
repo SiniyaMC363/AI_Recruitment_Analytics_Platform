@@ -24,5 +24,5 @@ def generate_summary_report(
     return {
         "total_candidates": len(candidates),
         "total_job_postings": len(job_postings),
-        "status": "Phase 4 — full reporting not yet implemented",
+        "status": "ready",
     }

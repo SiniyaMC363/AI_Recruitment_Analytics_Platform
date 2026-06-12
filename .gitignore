@@ -5,6 +5,11 @@ __pycache__/
 *.pyo
 *.pkl
 *.joblib
+*.tmp
+*.temp
+*.log
+.DS_Store
+Thumbs.db
 .env
 .vscode/
 .idea/

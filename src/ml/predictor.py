@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import joblib
-import pandas as pd
 
 from config.settings import settings
 from src.ml.feature_engineering import (
@@ -36,6 +36,12 @@ def get_default_model_path() -> Path:
     return settings.models_dir / MODEL_FILENAME
 
 
+@lru_cache(maxsize=2)
+def _load_model_from_path(path_str: str) -> dict[str, Any]:
+    """Load and cache a model artifact by path string."""
+    return joblib.load(path_str)
+
+
 def load_model_artifact(model_path: Path | None = None) -> dict[str, Any]:
     """Load a trained model artifact from disk.
 
@@ -54,7 +60,7 @@ def load_model_artifact(model_path: Path | None = None) -> dict[str, Any]:
             f"Model not found at {path}. "
             "Train the model first: python -m src.ml.train_model"
         )
-    return joblib.load(path)
+    return _load_model_from_path(str(path.resolve()))
 
 
 def explain_prediction(
@@ -138,7 +144,6 @@ def predict_candidate(
 
     artifact = load_model_artifact(model_path=model_path)
     model = artifact["model"]
-    classes = list(artifact.get("classes", model.classes_))
 
     if isinstance(features, dict):
         feature_frame = features_to_dataframe(features)

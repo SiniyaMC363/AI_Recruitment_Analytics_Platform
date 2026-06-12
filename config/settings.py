@@ -9,7 +9,10 @@ load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-APP_TITLE = os.getenv("APP_TITLE", "AI Recruitment Analytics Platform")
+APP_TITLE = os.getenv(
+    "APP_TITLE",
+    "AI Recruit Pro — Intelligent Recruitment Analytics Platform",
+)
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 DATA_RAW_DIR = PROJECT_ROOT / os.getenv("DATA_RAW_DIR", "data/raw")

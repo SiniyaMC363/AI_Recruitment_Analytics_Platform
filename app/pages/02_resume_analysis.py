@@ -1,49 +1,61 @@
-"""Resume Analysis page — Phase 2: NLP-powered resume parsing and skill matching."""
+"""Resume Analysis page — NLP-powered resume parsing and skill matching."""
 
-import sys
-from pathlib import Path
+from app.bootstrap import ensure_project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+ensure_project_root()
 
 import streamlit as st
 
 from app.components.sidebar import render_sidebar_header
+from app.components.ui import (
+    inject_custom_css,
+    render_empty_state,
+    render_friendly_error,
+    render_kpi_row,
+    render_page_header,
+    render_section_divider,
+    render_skill_tags,
+)
+from app.constants import EDUCATION_OPTIONS
 from src.nlp.preprocessing import preprocess_text
 from src.nlp.resume_parser import extract_text_from_pdf
 from src.nlp.skill_extractor import extract_skills, match_skills, parse_skills_input
 from src.nlp.skills_database import PREDEFINED_SKILLS
 
-st.set_page_config(page_title="Resume Analysis", page_icon="📄", layout="wide")
-
-render_sidebar_header()
-
-st.title("Resume Analysis")
-st.markdown(
-    "Upload a PDF resume or paste resume text to extract skills and compare them "
-    "against job requirements."
+st.set_page_config(
+    page_title="Resume Analysis | AI Recruit Pro",
+    page_icon="📄",
+    layout="wide",
 )
 
-# --- Input section ---
+inject_custom_css()
+render_sidebar_header()
+
+render_page_header(
+    "Resume Analysis",
+    subtitle="Upload a PDF resume or paste text to extract skills and compare against job requirements.",
+    icon="📄",
+)
+
 input_col, skills_col = st.columns([1.2, 1])
 
 with input_col:
-    st.subheader("Resume Input")
+    st.markdown("##### Resume Input")
     uploaded_file = st.file_uploader(
         "Upload PDF resume",
         type=["pdf"],
-        help="Supported format: PDF. Text-based PDFs work best.",
+        help="Supported format: PDF. Text-based PDFs work best; scanned images may not extract well.",
     )
 
     pasted_text = st.text_area(
         "Or paste resume text",
         placeholder="Paste resume content here if you do not have a PDF file...",
         height=180,
+        help="Plain-text resumes can be pasted directly for analysis.",
     )
 
 with skills_col:
-    st.subheader("Job Requirements")
+    st.markdown("##### Job Requirements")
     job_skills_input = st.text_area(
         "Required skills",
         value="Python, SQL, Machine Learning, Git, AWS",
@@ -54,67 +66,96 @@ with skills_col:
         "Job description (optional)",
         placeholder="Paste a job description to auto-detect required skills...",
         height=80,
+        help="Skills mentioned in the job description will be merged with your manual list.",
     )
 
-# --- Process resume text ---
 raw_text = ""
 extraction_error = None
 page_count = 0
 
 if uploaded_file is not None:
-    pdf_result = extract_text_from_pdf(uploaded_file)
+    with st.spinner("Extracting text from PDF..."):
+        pdf_result = extract_text_from_pdf(uploaded_file)
     if pdf_result.success:
         raw_text = pdf_result.text
         page_count = pdf_result.page_count
+        st.success(f"PDF processed successfully — {page_count} page(s) extracted.")
     else:
         extraction_error = pdf_result.error
 
 if pasted_text.strip():
-    # Pasted text takes precedence when both inputs are provided.
     raw_text = pasted_text.strip()
 
 if extraction_error:
-    st.error(f"PDF extraction failed: {extraction_error}")
+    render_friendly_error(
+        f"PDF extraction failed: {extraction_error}",
+        suggestion="Try pasting the resume text directly, or use a text-based PDF export.",
+    )
 
 if not raw_text:
-    st.info("Upload a PDF or paste resume text to begin analysis.")
+    render_empty_state(
+        "Upload a PDF or paste resume text to begin analysis.",
+        icon="📄",
+    )
     with st.expander("Supported skills database"):
         st.write(", ".join(PREDEFINED_SKILLS))
     st.stop()
 
-# --- NLP processing ---
-cleaned_text = preprocess_text(raw_text)
-extracted_skills = extract_skills(raw_text)
+try:
+    with st.spinner("Running NLP analysis..."):
+        cleaned_text = preprocess_text(raw_text)
+        extracted_skills = extract_skills(raw_text)
 
-required_skills = parse_skills_input(job_skills_input)
-if job_description.strip():
-    # Merge manually entered skills with skills detected from the job description.
-    detected_job_skills = extract_skills(job_description)
-    merged = {skill.lower(): skill for skill in required_skills}
-    for skill in detected_job_skills:
-        merged.setdefault(skill.lower(), skill)
-    required_skills = sorted(merged.values(), key=str.lower)
+        required_skills = parse_skills_input(job_skills_input)
+        if job_description.strip():
+            detected_job_skills = extract_skills(job_description)
+            merged = {skill.lower(): skill for skill in required_skills}
+            for skill in detected_job_skills:
+                merged.setdefault(skill.lower(), skill)
+            required_skills = sorted(merged.values(), key=str.lower)
 
-match_result = match_skills(raw_text, required_skills)
+        match_result = match_skills(raw_text, required_skills)
+except Exception:
+    render_friendly_error(
+        "NLP processing encountered an error.",
+        suggestion="Ensure the spaCy model is installed: python -m spacy download en_core_web_sm",
+    )
+    st.stop()
 
-# --- Summary metrics ---
-st.divider()
-st.subheader("Analysis Summary")
+render_section_divider("Analysis Summary")
 
-metric_cols = st.columns(4)
-metric_cols[0].metric("Skills Found", match_result.skill_count)
-metric_cols[1].metric("Required Skills", len(match_result.required_skills))
-metric_cols[2].metric("Matched Skills", len(match_result.matched_skills))
-metric_cols[3].metric("Match Score", f"{match_result.match_percentage}%")
+render_kpi_row(
+    [
+        {
+            "label": "Skills Found",
+            "value": match_result.skill_count,
+            "help": "Total predefined skills detected in the resume",
+        },
+        {
+            "label": "Required Skills",
+            "value": len(match_result.required_skills),
+            "help": "Skills specified in job requirements",
+        },
+        {
+            "label": "Matched Skills",
+            "value": len(match_result.matched_skills),
+            "help": "Required skills found in the resume",
+        },
+        {
+            "label": "Match Score",
+            "value": f"{match_result.match_percentage}%",
+            "help": "Percentage of required skills matched",
+        },
+    ]
+)
 
 if page_count:
     st.caption(f"PDF pages processed: {page_count}")
 
-# --- Text previews ---
 preview_col1, preview_col2 = st.columns(2)
 
 with preview_col1:
-    st.subheader("Resume Text Preview")
+    st.markdown("##### Resume Text Preview")
     st.text_area(
         "Original text",
         value=raw_text[:3000] + ("..." if len(raw_text) > 3000 else ""),
@@ -124,7 +165,7 @@ with preview_col1:
     )
 
 with preview_col2:
-    st.subheader("Cleaned Resume Preview")
+    st.markdown("##### Cleaned Resume Preview")
     st.text_area(
         "Preprocessed text",
         value=cleaned_text[:3000] + ("..." if len(cleaned_text) > 3000 else ""),
@@ -133,37 +174,24 @@ with preview_col2:
         label_visibility="collapsed",
     )
 
-# --- Skill results ---
-st.divider()
+render_section_divider("Skill Analysis")
+
 skills_col1, skills_col2, skills_col3 = st.columns(3)
 
 with skills_col1:
-    st.subheader("Extracted Skills")
-    if extracted_skills:
-        for skill in extracted_skills:
-            st.markdown(f"- **{skill}**")
-    else:
-        st.caption("No predefined skills detected in this resume.")
+    st.markdown("##### Extracted Skills")
+    render_skill_tags(extracted_skills)
 
 with skills_col2:
-    st.subheader("Matched Skills")
-    if match_result.matched_skills:
-        for skill in match_result.matched_skills:
-            st.success(skill)
-    else:
-        st.caption("No required skills matched yet.")
+    st.markdown("##### Matched Skills")
+    render_skill_tags(match_result.matched_skills, tag_class="skill-tag skill-tag-matched")
 
 with skills_col3:
-    st.subheader("Missing Skills")
-    if match_result.missing_skills:
-        for skill in match_result.missing_skills:
-            st.warning(skill)
-    else:
-        st.caption("No missing skills — great match!")
+    st.markdown("##### Missing Skills")
+    render_skill_tags(match_result.missing_skills, tag_class="skill-tag skill-tag-missing")
 
-# --- Match progress bar ---
 if match_result.required_skills:
-    st.subheader("Skill Match Progress")
+    render_section_divider("Skill Match Progress")
     st.progress(
         min(match_result.match_percentage / 100, 1.0),
         text=f"{match_result.match_percentage}% of required skills found in resume",
@@ -174,9 +202,8 @@ else:
 with st.expander("View full predefined skills database"):
     st.write(", ".join(PREDEFINED_SKILLS))
 
-# --- Optional bridge to Phase 3 Candidate Ranking ---
-st.divider()
-st.subheader("Send to Candidate Ranking")
+render_section_divider("Send to Candidate Ranking")
+st.caption("Transfer this analysis to the ML ranking module for suitability prediction.")
 
 ranking_col1, ranking_col2 = st.columns([1, 1])
 with ranking_col1:
@@ -184,6 +211,7 @@ with ranking_col1:
         "Candidate name for ranking",
         value="John Doe",
         key="ranking_candidate_name",
+        help="Display name used in prediction results.",
     )
 with ranking_col2:
     experience_years = st.number_input(
@@ -193,13 +221,15 @@ with ranking_col2:
         value=3.0,
         step=0.5,
         key="ranking_experience_years",
+        help="Estimate if not clearly stated in the resume.",
     )
 
 education_level = st.selectbox(
     "Education level",
-    options=["PhD", "Master", "Bachelor", "Associate", "High School", "Other"],
+    options=EDUCATION_OPTIONS,
     index=2,
     key="ranking_education_level",
+    help="Highest completed degree or equivalent.",
 )
 
 if st.button("Send to Candidate Ranking", type="primary"):
@@ -213,4 +243,6 @@ if st.button("Send to Candidate Ranking", type="primary"):
         "experience_years": experience_years,
         "education_level": education_level,
     }
-    st.success("Candidate data saved. Open the Candidate Ranking page to run ML prediction.")
+    st.success(
+        "Candidate data saved. Open **Candidate Ranking** from the sidebar to run ML prediction."
+    )

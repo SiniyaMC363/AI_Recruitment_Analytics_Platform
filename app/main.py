@@ -1,19 +1,24 @@
-"""Streamlit entry point for the Recruitment Analytics Platform.
+"""Streamlit entry point for AI Recruit Pro.
 
 Run with: streamlit run app/main.py
 """
-
-import sys
-from pathlib import Path
-
-# Ensure project root is on the Python path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-import streamlit as st
+from bootstrap import ensure_project_root
+ensure_project_root()
 
 from config.settings import settings
+
+from app.components.ui import (
+    inject_custom_css,
+    render_feature_highlights,
+    render_hero,
+    render_kpi_row,
+    render_section_divider,
+    render_sidebar_navigation,
+    render_tech_stack,
+    render_workflow_steps,
+)
+
+import streamlit as st
 
 settings.ensure_directories()
 
@@ -24,42 +29,64 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.title(settings.app_title)
+inject_custom_css()
+render_sidebar_navigation()
+
+render_hero(settings.app_title)
+
 st.markdown(
     """
-    Welcome to the **AI-Powered Recruitment Analytics Platform**.
-
-    Use the sidebar to navigate between modules. Features are being built
-    incrementally — see the README for the development roadmap.
+    **AI Recruit Pro** helps recruiters and hiring teams analyze resumes, match
+    candidates to job requirements, rank suitability with machine learning, and
+    visualize recruitment metrics — all in one interactive platform.
     """
 )
 
-col1, col2, col3 = st.columns(3)
+render_section_divider("Platform Status")
 
-with col1:
-    st.metric("Phase", "1 — Foundation", help="Config, data loaders, app shell")
-
-with col2:
-    st.metric("NLP Module", "Planned", help="Resume parsing and skill extraction")
-
-with col3:
-    st.metric("ML Module", "Planned", help="Candidate ranking and matching")
-
-st.divider()
-
-st.subheader("Getting Started")
-st.markdown(
-    """
-    1. Place sample data in `data/raw/` (see `candidates.csv` and `job_postings.csv`)
-    2. Open **Dashboard** from the sidebar to preview loaded data
-    3. Build out NLP, ML, and analytics modules phase by phase
-    """
+render_kpi_row(
+    [
+        {
+            "label": "Foundation",
+            "value": "Complete",
+            "help": "Configuration, data loaders, and application architecture",
+        },
+        {
+            "label": "NLP Module",
+            "value": "Complete",
+            "help": "Resume parsing, preprocessing, and skill extraction",
+        },
+        {
+            "label": "ML Module",
+            "value": "Complete",
+            "help": "Random Forest candidate ranking and suitability prediction",
+        },
+        {
+            "label": "Analytics",
+            "value": "Complete",
+            "help": "KPI dashboard, visualizations, filters, and CSV export",
+        },
+    ]
 )
 
-with st.sidebar:
-    st.header("Navigation")
-    st.page_link("main.py", label="Home", icon="🏠")
-    st.page_link("pages/01_dashboard.py", label="Dashboard", icon="📈")
-    st.page_link("pages/02_resume_analysis.py", label="Resume Analysis", icon="📄")
-    st.page_link("pages/03_candidate_ranking.py", label="Candidate Ranking", icon="🎯")
-    st.page_link("pages/04_analytics.py", label="Analytics", icon="📊")
+render_section_divider("End-to-End Workflow")
+render_workflow_steps()
+
+render_section_divider("Feature Highlights")
+render_feature_highlights()
+
+render_section_divider("Technology Stack")
+render_tech_stack()
+
+render_section_divider("Get Started")
+
+st.markdown(
+    """
+    1. **Dashboard** — Preview loaded candidates and job postings
+    2. **Resume Analysis** — Upload a PDF or paste text to extract and match skills
+    3. **Candidate Ranking** — Run ML suitability predictions with confidence scores
+    4. **Analytics** — Explore KPIs, charts, and export reports as CSV
+
+    Use the sidebar to navigate to any module.
+    """
+)
